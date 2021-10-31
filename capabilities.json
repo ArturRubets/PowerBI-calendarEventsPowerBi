@@ -13,8 +13,7 @@
         {
             "displayName": "Event name",
             "name": "eventName",
-            "kind": "Grouping",            
-            "requiredTypes": [{"text": true}]
+            "kind": "Grouping"
         }
     ],
     "objects": {
@@ -57,5 +56,6 @@
                 }
             ]
         }
-    ]
+    ],
+    "supportsMultiVisualSelection": true
 }
