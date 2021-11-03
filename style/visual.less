@@ -1,9 +1,227 @@
-p {
-    font-size: 20px;
-    font-weight: bold;
-    em {
-        background: yellow;
-        padding: 5px;
-        
-    }
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'QuickSand', sans-serif;
+}
+
+html{
+    font-size: 62.5%;
+}
+
+.header{
+    padding: 0rem 2rem;
+    color: #000;
+    position: absolute;
+    background-color: #FFF;
+    top: 2%;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.container{
+    position: relative;
+    // width: 916px;
+    // height:481px;
+    background-color: #fff;
+}
+
+.slicerCalendar{
+    padding: 3rem 2rem;
+    color: #000;
+    position: absolute;
+    background-color: #FFF;
+    top: 8%;
+    height: 90%;
+    width: 18%;
+}
+
+.slicerCalendar > div{
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    cursor: pointer;
+}
+
+.calendarLeft, .calendarRight{
+    position: absolute;
+    background-color: #FFF;
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 6%);
+    color:#000;
+    top: 8%;
+    height: 90%;
+}
+
+.calendarRight{
+    left: 59.5%; 
+    width: 40%;
+}
+
+.calendarLeft{
+    left: 18.5%;
+    width: 40%;
+}
+
+.month-year{
+    width:100%;
+    height: 17%;
+    position: relative;
+    padding: 0 5%;
+    text-align: center;
+    text-shadow: 0 0.3rem 0.5rem rgb(0 0 0 / 20%);
+}
+
+.month h1, .year h1{
+    font-size: 1.4rem;
+    color: black;
+}
+
+.month, .year, .arrow-wrap{
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 15%);
+    border-radius: 30px;
+    position: absolute;
+    top: 30%;
+    height: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.year, .month{
+    width: 22%;
+}
+
+.year{
+    right: 25%;
+}
+
+.month{
+    left: 25%;
+}
+
+.next{
+    right: 7%;
+}
+
+.prev{
+    left: 7%;
+}
+
+.next, .prev{
+    color: black;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0 3%;
+}
+
+.weekdays{
+    width: 100%;
+    height: 15%;
+    padding: 0 0.4rem;
+    display: flex;
+    align-items: center;
+}
+
+.weekdays div{
+    font-size: 1.4rem;
+    font-weight: 400;
+    letter-spacing: 0.1rem;
+    width: calc(100% /7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-shadow: 0 .3rem .5rem rgba(0,0,0,0.5);
+}
+
+.days{
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    padding: .2rem;
+    height: 68%;
+}
+
+.days div{
+    font-size: 1.4rem;
+    width: calc(100% /7);
+    height: calc(100% /7);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    text-shadow: 0 .3rem .5rem rgba(0, 0, 0, .5);
+    transition: background-color 0.2s;
+}
+
+.days > div:hover:not(.today){
+    border: .2rem solid #777;
+    cursor:pointer;
+}
+
+.prev-date,
+.next-date{
+    opacity: 0.5;
+}
+
+
+
+
+/* Events */
+
+
+.today{
+    color: #fff;
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4rem;
+}
+
+.today > div{
+    border-radius: 3rem;
+    background-color: #F5534E;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.event-finish{
+    border-top-right-radius: 2rem;
+    border-bottom-right-radius: 2rem;
+}
+
+.event-start{
+    border-top-left-radius: 2rem;
+    border-bottom-left-radius: 2rem;
+}
+
+.event-start, .event-finish{
+    display: table;
+    text-align: center;
+    color: #fff;
+    font-size: 1.4rem;
+}
+
+.event-finish span, .event-start span{
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.description{
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4rem;  
+    color: #fff;
+    font-weight: 600;
+}
+
+.description[data-size='small']{
+    font-size: 1.2rem;
+    justify-content: start;
+    padding: 0 .1rem;
+}
+
+.events div div{
+    position: fixed;
 }
