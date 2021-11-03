@@ -69,7 +69,7 @@ export class Visual implements IVisual {
         this.target.appendChild(this.container)
         
     }
-    private flag :boolean = true
+
     public update(options: VisualUpdateOptions) {
         //this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         this.options = options
@@ -77,6 +77,11 @@ export class Visual implements IVisual {
         const height = options.viewport.height
         let viewModel: ViewModel = visualTransform(options, this.host);
 
+        document.querySelectorAll('.calendarRight, .calendarLeft').forEach(n => n.remove())
+        let fontSizeHtml = width > 1000 ? 100 : Math.floor(width / 100) * 10
+        console.log(width);
+        console.log(fontSizeHtml);
+        document.documentElement.style.fontSize = `${fontSizeHtml}%`
         this.container.style.width = `${width}px`
         this.container.style.height = `${height}px`
         startUp()
