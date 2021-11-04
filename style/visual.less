@@ -10,13 +10,14 @@ html{
 }
 
 .header{
-    padding: 0rem 2rem;
+    padding: 0rem 1rem;
     color: #000;
     position: absolute;
     background-color: #FFF;
     top: 2%;
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
+    text-shadow: 0 0.3rem 0.5rem rgba(0, 0, 0, 0.2);
 }
 
 .container{
@@ -39,24 +40,30 @@ html{
     font-weight: 600;
     margin-bottom: 1.5rem;
     cursor: pointer;
+    text-shadow: 0 0.3rem 0.5rem rgba(0, 0, 0, 0.2);
+}
+
+.slicerCalendar > div:active{
+    text-shadow: 0 0.3rem 0.5rem rgba(0, 0, 0, 0.5);
 }
 
 .calendarLeft, .calendarRight{
     position: absolute;
     background-color: #FFF;
-    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 6%);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
     color:#000;
-    top: 8%;
-    height: 90%;
+    top: 13%;
+    height: 82%;
+    padding: 0 0.5rem;
 }
 
 .calendarRight{
-    left: 59.5%; 
+    left: 58%; 
     width: 40%;
 }
 
 .calendarLeft{
-    left: 18.5%;
+    left: 17%;
     width: 40%;
 }
 
@@ -75,8 +82,7 @@ html{
 }
 
 .month, .year, .arrow-wrap{
-    box-shadow: 0 0.5rem 1rem rgba(36, 34, 34, 0.15);
-    // box-shadow: 0 0.3rem 0.5rem rgb(0 0 0 / 50%);
+    box-shadow: 0 0.5rem 1rem rgba(36, 34, 34, 0.2);
     border-radius: 30px;
     position: absolute;
     top: 30%;
@@ -86,24 +92,28 @@ html{
     justify-content: center;
 }
 
-.year, .month{
-    width: 22%;
-}
-
 .year{
-    right: 25%;
+    width: 20%;
 }
 
 .month{
-    left: 25%;
+    width: 32%;
+}
+
+.year{
+    right: 20%;
+}
+
+.month{
+    left: 20%;
 }
 
 .next{
-    right: 7%;
+    right: 4%;
 }
 
 .prev{
-    left: 7%;
+    left: 4%;
 }
 
 .next, .prev{
@@ -111,6 +121,10 @@ html{
     opacity: 0.7;
     cursor: pointer;
     padding: 0 3%;
+}
+
+.next:active, .prev:active{
+    box-shadow: 0 0.5rem 1rem rgba(36, 34, 34, 0.5);
 }
 
 .weekdays{
@@ -210,13 +224,22 @@ html{
     display: flex; 
     justify-content: center;
     align-items: center;
-    font-size: 1.4rem;  
+    font-size: 1.2rem;  
     color: #fff;
     font-weight: 600;
 }
 
 .description[data-size='small']{
     font-size: 1rem;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0 .1rem;
+    word-spacing: 9999999px
+}
+
+.description[data-size='very-small']{
+    font-size: 0.7rem;
     justify-content: center;
     align-items: center;
     text-align: center;

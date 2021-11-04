@@ -12,11 +12,20 @@ import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import { VisualSettings } from "./settings";
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import "regenerator-runtime/runtime"; //необходим для подсказок
+import { createTooltipServiceWrapper, ITooltipServiceWrapper } from "powerbi-visuals-utils-tooltiputils";
+import ISelectionId = powerbi.visuals.ISelectionId;
+import { select as d3Select } from "d3-selection";
+type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
 interface Data {
-    dateStart: Date,
-    dateFinish: Date,
-    eventName: string
+    start: Date,
+    finish: Date,
+    description: string,
+    colorStartAndFinish: string,
+    colorDays: string,
+    selectionId: ISelectionId;
 }
 
 interface ViewModel {
@@ -24,30 +33,32 @@ interface ViewModel {
     settings: VisualSettings;
 }
 
-const events = [
-    { start: new Date(2021, 9, 6), finish: new Date(2021, 10, 2), description: 'Big Sale Promotion', colorStartAndFinish:'', colorDays: '' }
-    , { start: new Date(2021, 9, 8), finish: new Date(2021, 9, 10), description: '30% OFF', colorStartAndFinish:'', colorDays: '' }
-    , { start: new Date(2021, 10, 6), finish: new Date(2021, 10, 18), description: '40% OFF', colorStartAndFinish:'', colorDays: '' }
-    , { start: new Date(2021, 9, 15), finish: new Date(2021, 9, 21), description: '50% OFF', colorStartAndFinish:'', colorDays: '' }
-    , { start: new Date(2021, 9, 18), finish: new Date(2021, 9, 23), description: '60% OFF', colorStartAndFinish:'', colorDays: '' }
-]
+// const events = [
+//     { start: new Date(2021, 9, 6), finish: new Date(2021, 10, 2), description: 'Big Sale Promotion', colorStartAndFinish:'', colorDays: '' }
+//     , { start: new Date(2021, 9, 8), finish: new Date(2021, 9, 10), description: '30% OFF', colorStartAndFinish:'', colorDays: '' }
+//     , { start: new Date(2021, 10, 6), finish: new Date(2021, 10, 18), description: '40% OFF', colorStartAndFinish:'', colorDays: '' }
+//     , { start: new Date(2021, 9, 15), finish: new Date(2021, 9, 21), description: '50% OFF', colorStartAndFinish:'', colorDays: '' }
+//     , { start: new Date(2021, 9, 18), finish: new Date(2021, 9, 23), description: '60% OFF', colorStartAndFinish:'', colorDays: '' }
+// ]
 
-events.forEach(e => {
-    const color = randDarkColor()
-    e.colorStartAndFinish = color
-    e.colorDays = color
-})
+// events.forEach(e => {
+//     const color = randDarkColor()
+//     e.colorStartAndFinish = color
+//     e.colorDays = color
+// })
+
+let events = []
+let filterEvents_: Data[] = []
 
 export class Visual implements IVisual {
     private host: IVisualHost;
     private options: VisualUpdateOptions
     private container: HTMLElement
-
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
 
     private target: HTMLElement;
-    private updateCount: number;
     private settings: VisualSettings;
-    private textNode: Text;
+
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
@@ -67,27 +78,29 @@ export class Visual implements IVisual {
             </div>
         `
         this.target.appendChild(this.container)
-        
+
+        console.log(this.tooltipServiceWrapper);
+
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
     }
 
     public update(options: VisualUpdateOptions) {
+
         //this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         this.options = options
         const width = options.viewport.width
         const height = options.viewport.height
         let viewModel: ViewModel = visualTransform(options, this.host);
 
+        events = viewModel.dataModel
+
         document.querySelectorAll('.calendarRight, .calendarLeft').forEach(n => n.remove())
         let fontSizeHtml = width > 1000 ? 100 : Math.floor(width / 100) * 10
-        console.log(width);
-        console.log(fontSizeHtml);
         document.documentElement.style.fontSize = `${fontSizeHtml}%`
         this.container.style.width = `${width}px`
         this.container.style.height = `${height}px`
-        startUp()
-        
+        startUp(this.tooltipServiceWrapper)
     }
-
 
     private static parseSettings(dataView: DataView): VisualSettings {
         return <VisualSettings>VisualSettings.parse(dataView);
@@ -96,6 +109,13 @@ export class Visual implements IVisual {
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
         return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
     }
+}
+
+function getTooltipData(value: Data): VisualTooltipDataItem[] {    
+    return [{
+        displayName: '',
+        value: value.description
+    }];
 }
 
 function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewModel {
@@ -119,54 +139,70 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
 
     let flag = false
     dataViews[0].table.columns.forEach(column => {
-        if(column.roles['dateStart']){
-            if(column.type.dateTime != true){
+        if (column.roles['dateStart']) {
+            if (column.type.dateTime != true) {
                 flag = true
             }
         }
-        if(column.roles['dateFinish']){
-            if(column.type.dateTime != true){
+        if (column.roles['dateFinish']) {
+            if (column.type.dateTime != true) {
                 flag = true
             }
         }
-        if(column.roles['eventName']){
-            if(column.type.text != true){
+        if (column.roles['eventName']) {
+            if (column.type.text != true) {
                 flag = true
             }
         }
     })
 
-    if(flag){
+    if (flag) {
         return viewModel;
     }
 
-    const dataArray:Data[] = []
-    dataViews[0].table.rows.forEach(array => {
-        let dataObject = {dateStart: null, dateFinish: null, eventName: null}
+    // options.dataViews[0].table.identity.map((identity) => {
+    //     const categoryColumn = {
+    //         source: this.dataView.source.table.columns[0],
+    //         values: null,
+    //         identity: [identity]
+    //     };
+
+    //     return this.host.createSelectionIdBuilder()
+    //         .withCategory(categoryColumn, 0)
+    //         .createSelectionId();
+    // });
+
+
+
+    const dataArray: Data[] = []
+    dataViews[0].table.rows.forEach((array, i) => {
+        let dataObject = { start: null, finish: null, description: null, colorStartAndFinish: null, colorDays: null, selectionId: null }
         array.forEach((data, i) => {
-            if(dataViews[0].table.columns[i].roles['dateStart']){
-                dataObject.dateStart = data
+            if (dataViews[0].table.columns[i].roles['dateStart']) {
+                dataObject.start = new Date(data.toString())
             }
-            if(dataViews[0].table.columns[i].roles['dateFinish']){
-                dataObject.dateFinish = data
+            if (dataViews[0].table.columns[i].roles['dateFinish']) {
+                dataObject.finish = new Date(data.toString())
             }
-            if(dataViews[0].table.columns[i].roles['eventName']){
-                dataObject.eventName = data
+            if (dataViews[0].table.columns[i].roles['eventName']) {
+                dataObject.description = data
             }
         })
+
+        const color = randDarkColor()
+        dataObject.colorStartAndFinish = color
+        dataObject.colorDays = color
+        dataObject.selectionId = host.createSelectionIdBuilder().withTable(dataViews[0].table, i).createSelectionId();
         dataArray.push(dataObject)
     })
+
+
 
     return {
         dataModel: dataArray,
         settings: null
     };
 }
-
-
-
-
-
 
 function randDarkColor() {
     var lum = -0.25;
@@ -185,7 +221,8 @@ function randDarkColor() {
 }
 
 
-function $getCalendarHtml(){ return `
+function $getCalendarHtml() {
+    return `
 <div class="month-year">
     <div class="arrow-wrap prev">
        
@@ -410,6 +447,7 @@ function setEvents(date, $main) {
     const lastDate = lastDateOnCalendar($days, date)
 
     const eventsFiltes = filterAndSortEvents(firstDate, lastDate)
+    filterEvents_ = eventsFiltes
     if (eventsFiltes.length <= 0) {
         return
     }
@@ -434,11 +472,11 @@ function setEvents(date, $main) {
 
             $dateEvent.style.top = top + 'px'
             $dateEvent.style.left = left + 'px'
-            $dateEvent.style.width = width + 'px'
+            $dateEvent.style.width = width * 1.1 + 'px' //умножаю на 1.1 чтобы не было зазоров между div
             $dateEvent.style.height = height + 'px'
 
             $dateEvent.setAttribute('data-date', currentDate.toDateString())
-            $dateEvent.setAttribute('data-description', e.description)
+            $dateEvent.setAttribute('data-index', i.toString())
 
             if (currentDate.getTime() === e.start.getTime()) {
                 $dateEvent.classList.add('event-start')
@@ -456,15 +494,17 @@ function setEvents(date, $main) {
                 $dateEvent.innerHTML = `<span>${$dateCalendar.innerHTML}</span>`
                 $dateEvent.style.backgroundColor = e.colorStartAndFinish
             }
-            
-            if (eventsFiltes.filter((event, index) => index < i).map(e => e.finish.getTime()).filter( time => time === currentDate.getTime()).length > 0) {
+
+            if (eventsFiltes.filter((event, index) => index < i).map(e => e.finish.getTime()).filter(time => time === currentDate.getTime()).length > 0) {
                 //Делаем прозрачность текущему событию если предыдущее заканчивается в период текущего
-                $dateEvent.style.opacity = '0'
+                // $dateEvent.style.opacity = '0'
+                $dateEvent.style.display = 'none' // убираем из DOM чтобы при наведении на предыдущее событие делать подсказку
             }
 
             if (currentDate.getTime() != e.finish.getTime() && currentDate.getTime() != e.start.getTime()) {
                 $dateEvent.classList.add('event')
                 $dateEvent.style.backgroundColor = e.colorDays
+                // $dateCalendar.style.backgroundColor = e.colorStartAndFinish
             }
 
             currentDate = addDay(currentDate, 1)
@@ -492,19 +532,28 @@ function setEvents(date, $main) {
             }
         })
 
-        const $description = document.createElement('div')
-        $description.classList.add('description')
-        $event.appendChild($description)
-
-        const { top, left, width, height } = $startNodeForDescription.getBoundingClientRect()
-
-        $description.style.top = top + 'px'
-        $description.style.left = left + 'px'
-        $description.style.width = width * daysSuitable.length + 'px'
-        $description.style.height = height + 'px'
-        $description.innerHTML = e.description
-        if (daysSuitable.length === 1) {
-            $description.setAttribute('data-size', 'small')
+        if($startNodeForDescription){
+            const $description = document.createElement('div')
+            $description.classList.add('description')
+            
+            
+            $description.setAttribute('data-index', i.toString())
+            $event.appendChild($description)
+    
+            const { top, left, width, height } = $startNodeForDescription.getBoundingClientRect()
+    
+            $description.style.top = top + 'px'
+            $description.style.left = left + 'px'
+            $description.style.width = width * daysSuitable.length + 'px'
+            $description.style.height = height + 'px'
+            $description.innerHTML = e.description
+            if (daysSuitable.length === 1) {
+                if (e.description.split(' ').length > 2) {
+                    $description.setAttribute('data-size', 'very-small')
+                } else {
+                    $description.setAttribute('data-size', 'small')
+                }
+            }
         }
     })
 }
@@ -564,16 +613,34 @@ const renderCalendar = (date, $main) => {
     today(monthDays.parentNode, date)
 }
 
-function flow(date, $main) {
+function flow(date, $main, tooltipServiceWrapper: ITooltipServiceWrapper) {
+    debugger
     renderCalendar(date, $main)
     setEvents(date, $main)
+
+    $main.querySelectorAll('.events div div').forEach(e => {
+        const d3div = d3Select(e)
+        const index = e.getAttribute('data-index')
+        const event = filterEvents_[index]
+        if(event){
+            
+            d3div.data([{selectionId: event.selectionId, description: event.description}])
+        
+            tooltipServiceWrapper.addTooltip(d3div,
+                (datapoint:Data) => getTooltipData(datapoint),
+                (datapoint:Data) => datapoint.selectionId
+             );
+        }else{
+            
+        }
+    })
 }
 
 function renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar) {
     if (monthDiff(dateLeftCalendar, dateRightCalendar) === 1) {
         removeArrow($calendarLeft, 'next')
         removeArrow($calendarRight, 'prev')
-    } else{
+    } else {
         showArrow($calendarLeft, 'next')
         showArrow($calendarRight, 'prev')
     }
@@ -592,110 +659,120 @@ function removeArrow($calendar, className) {
     $calendar.querySelector(`.month-year .${className}`).style.display = 'none'
 }
 
-const startUp = () => {
+const startUp = (tooltipServiceWrapper: ITooltipServiceWrapper) => {
     let dateRightCalendar = new Date()
     const $calendarRight = document.createElement('div')
     $calendarRight.classList.add('calendarRight')
     $calendarRight.innerHTML = $getCalendarHtml()
     document.querySelector('.container').appendChild($calendarRight)
-    flow(dateRightCalendar, $calendarRight)
+    flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
 
-    let dateLeftCalendar = new Date()
+    let dateLeftCalendar =  new Date()
     dateLeftCalendar.setMonth(dateLeftCalendar.getMonth() - 1)
     const $calendarLeft = document.createElement('div')
     $calendarLeft.classList.add('calendarLeft')
     $calendarLeft.innerHTML = $getCalendarHtml()
     document.querySelector('.container').appendChild($calendarLeft)
-    flow(dateLeftCalendar, $calendarLeft)
+    flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
 
     renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
 
     $calendarLeft.querySelector('.prev').addEventListener('click', () => {
         dateLeftCalendar.setMonth(dateLeftCalendar.getMonth() - 1)
-        flow(dateLeftCalendar, $calendarLeft)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     $calendarLeft.querySelector('.next').addEventListener('click', () => {
         dateLeftCalendar.setMonth(dateLeftCalendar.getMonth() + 1)
-        flow(dateLeftCalendar, $calendarLeft)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     $calendarRight.querySelector('.prev').addEventListener('click', () => {
         dateRightCalendar.setMonth(dateRightCalendar.getMonth() - 1)
-        flow(dateRightCalendar, $calendarRight)
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     $calendarRight.querySelector('.next').addEventListener('click', () => {
         dateRightCalendar.setMonth(dateRightCalendar.getMonth() + 1)
-        flow(dateRightCalendar, $calendarRight)
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerToday').addEventListener('click', () => {
         dateRightCalendar = new Date()
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
-        
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerYesterday').addEventListener('click', () => {
         dateRightCalendar = new Date(new Date().setDate(new Date().getDate() - 1))
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
-       
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerLast7Days').addEventListener('click', () => {
         dateRightCalendar = new Date()
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
-        
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
-    
+
     document.querySelector('#slicerLast30Days').addEventListener('click', () => {
         dateRightCalendar = new Date()
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
-        
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerThisMonth').addEventListener('click', () => {
         dateRightCalendar = new Date()
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
-        
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerLastMonth').addEventListener('click', () => {
-        const lastMonth =  new Date(new Date().setMonth(new Date().getMonth() - 1))
+        const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1))
         dateRightCalendar = new Date(lastMonth)
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
 
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
     })
 
     document.querySelector('#slicerLastYear').addEventListener('click', () => {
-        const lastYear =  new Date(new Date().setFullYear(new Date().getFullYear() - 1))
+        const lastYear = new Date(new Date().setFullYear(new Date().getFullYear() - 1))
         dateRightCalendar = new Date(lastYear)
         dateLeftCalendar = new Date(new Date(dateRightCalendar).setMonth(dateRightCalendar.getMonth() - 1))
 
-        flow(dateRightCalendar, $calendarRight)
-        flow(dateLeftCalendar, $calendarLeft)
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
         renderArrow($calendarLeft, $calendarRight, dateLeftCalendar, dateRightCalendar)
+    })
+
+    document.querySelector('.header').addEventListener('click', () => {
+        events.forEach(e => {
+            const color = randDarkColor()
+            e.colorStartAndFinish = color
+            e.colorDays = color
+        })
+        flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
+        flow(dateLeftCalendar, $calendarLeft, tooltipServiceWrapper)
     })
 }
