@@ -17,7 +17,6 @@ import "regenerator-runtime/runtime"; //необходим для подсказ
 import { createTooltipServiceWrapper, ITooltipServiceWrapper } from "powerbi-visuals-utils-tooltiputils";
 import ISelectionId = powerbi.visuals.ISelectionId;
 import { select as d3Select } from "d3-selection";
-type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
 interface Data {
     start: Date,
@@ -58,8 +57,9 @@ export class Visual implements IVisual {
 
     private target: HTMLElement;
     private settings: VisualSettings;
-
-
+    private dateLeftCalendar_:Date = new Date(new Date().setMonth(new Date().getMonth() - 1));
+    private dateRightCalendar_: Date = new Date();
+    
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
         this.target = options.element;
@@ -79,13 +79,10 @@ export class Visual implements IVisual {
         `
         this.target.appendChild(this.container)
 
-        console.log(this.tooltipServiceWrapper);
-
         this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
     }
 
     public update(options: VisualUpdateOptions) {
-
         //this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
         this.options = options
         const width = options.viewport.width
@@ -94,12 +91,13 @@ export class Visual implements IVisual {
 
         events = viewModel.dataModel
 
-        document.querySelectorAll('.calendarRight, .calendarLeft').forEach(n => n.remove())
         let fontSizeHtml = width > 1000 ? 100 : Math.floor(width / 100) * 10
         document.documentElement.style.fontSize = `${fontSizeHtml}%`
         this.container.style.width = `${width}px`
         this.container.style.height = `${height}px`
-        startUp(this.tooltipServiceWrapper)
+
+        document.querySelectorAll('.calendarRight, .calendarLeft').forEach(n => n.remove()) 
+        startUp(this.dateRightCalendar_, this.dateLeftCalendar_, this.tooltipServiceWrapper)
     }
 
     private static parseSettings(dataView: DataView): VisualSettings {
@@ -160,20 +158,6 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
         return viewModel;
     }
 
-    // options.dataViews[0].table.identity.map((identity) => {
-    //     const categoryColumn = {
-    //         source: this.dataView.source.table.columns[0],
-    //         values: null,
-    //         identity: [identity]
-    //     };
-
-    //     return this.host.createSelectionIdBuilder()
-    //         .withCategory(categoryColumn, 0)
-    //         .createSelectionId();
-    // });
-
-
-
     const dataArray: Data[] = []
     dataViews[0].table.rows.forEach((array, i) => {
         let dataObject = { start: null, finish: null, description: null, colorStartAndFinish: null, colorDays: null, selectionId: null }
@@ -188,15 +172,21 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): ViewM
                 dataObject.description = data
             }
         })
+        
 
-        const color = randDarkColor()
-        dataObject.colorStartAndFinish = color
-        dataObject.colorDays = color
         dataObject.selectionId = host.createSelectionIdBuilder().withTable(dataViews[0].table, i).createSelectionId();
+        const equalEvent =  events?.find(e => e.selectionId.equals(dataObject.selectionId))
+        if(!equalEvent){
+            const color = randDarkColor()
+            dataObject.colorStartAndFinish = color
+            dataObject.colorDays = color
+        } else{
+            dataObject.colorStartAndFinish = equalEvent.colorStartAndFinish
+            dataObject.colorDays = equalEvent.colorDays
+            
+        }
         dataArray.push(dataObject)
     })
-
-
 
     return {
         dataModel: dataArray,
@@ -219,7 +209,6 @@ function randDarkColor() {
     }
     return rgb;
 }
-
 
 function $getCalendarHtml() {
     return `
@@ -614,7 +603,6 @@ const renderCalendar = (date, $main) => {
 }
 
 function flow(date, $main, tooltipServiceWrapper: ITooltipServiceWrapper) {
-    debugger
     renderCalendar(date, $main)
     setEvents(date, $main)
 
@@ -659,16 +647,16 @@ function removeArrow($calendar, className) {
     $calendar.querySelector(`.month-year .${className}`).style.display = 'none'
 }
 
-const startUp = (tooltipServiceWrapper: ITooltipServiceWrapper) => {
-    let dateRightCalendar = new Date()
+const startUp = (dateRightCalendar_:Date, dateLeftCalendar_:Date, tooltipServiceWrapper: ITooltipServiceWrapper) => {
+    let dateRightCalendar = dateRightCalendar_ //new Date()
     const $calendarRight = document.createElement('div')
     $calendarRight.classList.add('calendarRight')
     $calendarRight.innerHTML = $getCalendarHtml()
     document.querySelector('.container').appendChild($calendarRight)
     flow(dateRightCalendar, $calendarRight, tooltipServiceWrapper)
 
-    let dateLeftCalendar =  new Date()
-    dateLeftCalendar.setMonth(dateLeftCalendar.getMonth() - 1)
+    let dateLeftCalendar = dateLeftCalendar_//new Date()
+    //dateLeftCalendar.setMonth(dateLeftCalendar.getMonth() - 1)
     const $calendarLeft = document.createElement('div')
     $calendarLeft.classList.add('calendarLeft')
     $calendarLeft.innerHTML = $getCalendarHtml()
